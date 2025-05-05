@@ -1,31 +1,34 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"log"
+	"log/slog"
+	"os"
 
-	"github.com/4strodev/wiring/pkg/collections/graph"
+	"github.com/4strodev/wiring/pkg/container"
 )
 
+type MyService struct {
+}
+
 func main() {
-	var numbers = []int{1, 2, 3, 4, 5}
-	var nodes = []*graph.Node[int]{}
-	var g = graph.NewGraph[int]()
+	cont := container.New()
 
-	for _, n := range numbers {
-		node := graph.NewNode(n)
-		nodes = append(nodes, node)
-		g.Add(node)
+	err := cont.AddDependencies(func(s io.Writer) (*slog.Logger, error) {
+		return slog.New(slog.NewJSONHandler(s, nil)), errors.New("an artificial error")
+	}, func(logger *slog.Logger) MyService {
+		return MyService{}
+	}, func() io.Writer {
+		return os.Stdout
+	})
+
+	cont.Graph.DetectCircularRelations()
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	g.Connect(nodes[0], nodes[1], graph.OUT)
-	g.Connect(nodes[1], nodes[2], graph.OUT)
-	g.Connect(nodes[2], nodes[0], graph.OUT)
-
-	cicle, found := g.DetectCircularRelations()
-	if !found {
-		log.Fatal("No cicle detected")
-	} else {
-		log.Println("Cicle detected", cicle)
-	}
-
+	log.Println("container works")
 }

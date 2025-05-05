@@ -1,0 +1,10 @@
+version: 3
+
+tasks:
+  build:
+    desc: "Compile library"
+    cmd: go build -o ./bin/main .
+
+  test:
+    desc: "Execute tests"
+    cmd: go test ./...

@@ -27,6 +27,11 @@ func NewNode[T any](v T) *Node[T] {
 	}
 }
 
+func (n Node[T]) IsConnectedWith(node *Node[T]) bool {
+	_, ok := n.connections[node]
+	return ok
+}
+
 // Connect sets a connection between passed node and current node
 // setting the direction for each node. When the direction is [BOTH]
 func (n *Node[T]) Connect(node *Node[T], dir connectionDirection) {

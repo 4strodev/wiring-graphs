@@ -11,6 +11,22 @@ type DependencyBuilder[T any] struct {
 	Resolver any
 }
 
+func (d DependencyBuilder[T]) Type() reflect.Type {
+	resolverType := reflect.TypeOf(d.Resolver)
+	return resolverType.Out(0)
+}
+
+func IsValid(resolver any) bool {
+	return true
+	if _, ok := isSimpleResolver[any](resolver); ok {
+		return ok
+	} else if _, ok := isErrorResolver[any](resolver); ok {
+		return ok
+	}
+
+	return false
+}
+
 func Execute[T any](d DependencyBuilder[T]) (T, error) {
 	var value T
 	var err error
@@ -32,7 +48,8 @@ func isSimpleResolver[T any](resolver any) (simpleResolver SimpleFunctionResolve
 		return
 	}
 
-	if valType.Out(0) != reflect.TypeFor[T]() {
+	tType := reflect.TypeFor[T]()
+	if valType.Out(0) != tType && tType != reflect.TypeFor[any]() {
 		return
 	}
 

@@ -27,6 +27,10 @@ func (g Graph[T]) Connect(originNode, destinationNode *Node[T], dir connectionDi
 	originNode.Connect(destinationNode, dir)
 }
 
+func (g Graph[T]) GetNodes() set.Set[*Node[T]] {
+	return g.nodes
+}
+
 func (g Graph[T]) GetRootNodes() []*Node[T] {
 	var rootNodes = []*Node[T]{}
 	for node := range g.nodes {

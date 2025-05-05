@@ -14,3 +14,7 @@ func (s Set[T]) Has(val T) bool {
 	_, ok := s[val]
 	return ok
 }
+
+func (s Set[T]) Remove(val T) {
+	delete(s, val)
+}
