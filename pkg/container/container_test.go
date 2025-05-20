@@ -23,6 +23,10 @@ func NewService() MyService {
 	return MyService{}
 }
 
+type MyDeps struct {
+	Service MyService
+}
+
 func TestDetectCircularDependencies(t *testing.T) {
 	cont := container.New()
 
@@ -64,4 +68,19 @@ func TestResolve_WithDependencies(t *testing.T) {
 	buf, err := container.Resolve[*bytes.Buffer](cont)
 	require.NoError(t, err)
 	require.NotNil(t, buf)
+}
+
+func TestFill(t *testing.T) {
+	cont := container.New()
+
+	dependantResolver := func(s MyService) *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	}
+
+	err := cont.AddDependencies(dependantResolver, NewService)
+	require.NoError(t, err)
+
+	var deps MyDeps
+	err = cont.Fill(&deps)
+	require.NoError(t, err, "struct should be filled correctly")
 }
