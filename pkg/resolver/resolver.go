@@ -1,103 +1,88 @@
 package resolver
 
 import (
+	"fmt"
 	"reflect"
 )
 
 type SimpleFunctionResolver[T any] = func() T
 type ErrorFunctionResolver[T any] = func() (T, error)
 
-type DependencyBuilder[T any] struct {
+type DependencyResolver[T any] struct {
 	Resolver any
 }
 
-func (d DependencyBuilder[T]) Type() reflect.Type {
+func (d DependencyResolver[T]) Type() reflect.Type {
 	resolverType := reflect.TypeOf(d.Resolver)
 	return resolverType.Out(0)
 }
 
-func IsValid(resolver any) bool {
-	return true
-	if _, ok := isSimpleResolver[any](resolver); ok {
-		return ok
-	} else if _, ok := isErrorResolver[any](resolver); ok {
-		return ok
+func (d DependencyResolver[T]) Input() []reflect.Type {
+	resolverType := reflect.TypeOf(d.Resolver)
+	input := []reflect.Type{}
+	for i := 0; i < resolverType.NumIn(); i++ {
+		input = append(input, resolverType.In(i))
 	}
 
-	return false
+	return input
 }
 
-func Execute[T any](d DependencyBuilder[T]) (T, error) {
-	var value T
+func IsValid(resolver any) bool {
+	return canBeSimpleResolver(resolver) || canBeErrorResolver(resolver)
+}
+
+func Execute(d DependencyResolver[any], in []reflect.Value) (reflect.Value, error) {
+	var value reflect.Value
 	var err error
 
-	if simpleResolver, ok := isSimpleResolver[T](d.Resolver); ok {
-		value = simpleResolver()
-	} else if errorResolver, ok := isErrorResolver[T](d.Resolver); ok {
-		value, err = errorResolver()
-	}
+	if canBeSimpleResolver(d.Resolver) {
+		reflectValue := reflect.ValueOf(d.Resolver)
+		out := reflectValue.Call(in)
+		value = out[0]
+	} else if canBeErrorResolver(d.Resolver) {
+		reflectValue := reflect.ValueOf(d.Resolver)
+		out := reflectValue.Call(in)
 
+		if len(out) != 2 {
+			return reflect.Value{}, fmt.Errorf("resolver for type %s does not return two values", d.Type().String())
+		}
+
+		value = out[0]
+		if out[1].IsZero() {
+			err = nil
+		}
+		returnedError, ok := out[1].Interface().(error)
+		if !ok {
+			err = fmt.Errorf("resolver should return an error not %s", out[1].Type().String())
+		}
+
+		err = returnedError
+	}
 	return value, err
 }
 
-func isSimpleResolver[T any](resolver any) (simpleResolver SimpleFunctionResolver[T], isValid bool) {
+func canBeSimpleResolver(resolver any) bool {
 	val := reflect.ValueOf(resolver)
 	valType := val.Type()
 
 	if valType.NumOut() != 1 {
-		return
+		return false
 	}
 
-	tType := reflect.TypeFor[T]()
-	if valType.Out(0) != tType && tType != reflect.TypeFor[any]() {
-		return
-	}
-
-	isValid = true
-	simpleResolver = func() T {
-		var resolverValue T
-		result := val.Call([]reflect.Value{})
-		value := result[0]
-
-		resolverValue = value.Interface().(T)
-
-		return resolverValue
-	}
-
-	return
+	return true
 }
 
-func isErrorResolver[T any](resolver any) (errorResolver ErrorFunctionResolver[T], isValid bool) {
+func canBeErrorResolver(resolver any) bool {
 	val := reflect.ValueOf(resolver)
 	valType := val.Type()
 
 	if valType.NumOut() != 2 {
-		return
-	}
-
-	if valType.Out(0) != reflect.TypeFor[T]() {
-		return
+		return false
 	}
 
 	if valType.Out(1) != reflect.TypeFor[error]() {
-		return
+		return false
 	}
 
-	isValid = true
-	errorResolver = func() (T, error) {
-		var resolverValue T
-		result := val.Call([]reflect.Value{})
-		value := result[0]
-		err := result[1]
-
-		if !err.IsNil() {
-			return resolverValue, err.Interface().(error)
-		}
-
-		resolverValue = value.Interface().(T)
-
-		return resolverValue, nil
-	}
-
-	return
+	return true
 }

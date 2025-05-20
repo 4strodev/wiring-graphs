@@ -11,8 +11,8 @@ func (q *Queue[T]) Pop() (v T, returned bool) {
 		return
 	}
 
-	r := (*q)[len(*q)-1]
-	*q = (*q)[:len(*q)-1]
+	r := (*q)[0]
+	*q = (*q)[1:len(*q)]
 
 	v = r
 	returned = true

@@ -10,23 +10,25 @@ import (
 )
 
 type Container struct {
-	graph.Graph[resolver.DependencyBuilder[any]]
-	typeIndex map[reflect.Type]*graph.Node[resolver.DependencyBuilder[any]]
+	graph.Graph[resolver.DependencyResolver[any]]
+	typeIndex map[reflect.Type]*graph.Node[resolver.DependencyResolver[any]]
+	connected bool
 }
 
 func New() *Container {
 	return &Container{
-		Graph:     graph.NewGraph[resolver.DependencyBuilder[any]](),
-		typeIndex: make(map[reflect.Type]*graph.Node[resolver.DependencyBuilder[any]]),
+		Graph:     graph.NewGraph[resolver.DependencyResolver[any]](),
+		typeIndex: make(map[reflect.Type]*graph.Node[resolver.DependencyResolver[any]]),
 	}
 }
 
 func (c *Container) AddDependency(res any) error {
+	c.connected = false
 	if !resolver.IsValid(res) {
 		return errors.New("invalid resolver")
 	}
 
-	builder := resolver.DependencyBuilder[any]{
+	builder := resolver.DependencyResolver[any]{
 		Resolver: res,
 	}
 
@@ -40,16 +42,17 @@ func (c *Container) AddDependency(res any) error {
 	c.Add(node)
 	c.typeIndex[resType] = node
 
-	return c.setConnections()
+	return nil
 }
 
 func (c *Container) AddDependencies(resolvers ...any) error {
+	c.connected = false
 	for _, res := range resolvers {
 		if !resolver.IsValid(res) {
 			return errors.New("invalid resolver")
 		}
 
-		builder := resolver.DependencyBuilder[any]{
+		builder := resolver.DependencyResolver[any]{
 			Resolver: res,
 		}
 
@@ -64,10 +67,31 @@ func (c *Container) AddDependencies(resolvers ...any) error {
 		c.typeIndex[resType] = node
 	}
 
+	return nil
+}
+
+func (c *Container) ensureNodesConnected() error {
+	if c.connected {
+		return nil
+	}
+
 	return c.setConnections()
 }
 
-func (c Container) getNodeFor(t reflect.Type) (*graph.Node[resolver.DependencyBuilder[any]], error) {
+func (c *Container) DetectCircularDependencies() ([]*graph.Node[resolver.DependencyResolver[any]], error) {
+	err := c.ensureNodesConnected()
+	if err != nil {
+		return nil, err
+	}
+	path, detected := c.Graph.DetectCircularRelations()
+	if detected {
+		return path, nil
+	}
+
+	return nil, nil
+}
+
+func (c Container) getNodeFor(t reflect.Type) (*graph.Node[resolver.DependencyResolver[any]], error) {
 	node, ok := c.typeIndex[t]
 	if !ok {
 		return nil, fmt.Errorf("dependency for %v not found", t)
@@ -90,7 +114,7 @@ func (c *Container) setConnections() error {
 
 			if dependencyNode.IsConnectedWith(node) {
 				return fmt.Errorf("circular dependency found: %v",
-					[]*graph.Node[resolver.DependencyBuilder[any]]{
+					[]*graph.Node[resolver.DependencyResolver[any]]{
 						node,
 						dependencyNode,
 						node,
@@ -107,5 +131,29 @@ func (c *Container) setConnections() error {
 		return fmt.Errorf("circular dependency found: %v", cicle)
 	}
 
+	c.connected = true
 	return nil
+}
+
+func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err error) {
+	node, ok := c.typeIndex[t]
+	if !ok {
+		err = fmt.Errorf("dependency not found for type %v", t)
+		return
+	}
+
+	dependencyResolver := node.Val
+	inputTypes := dependencyResolver.Input()
+	inputArgs := []reflect.Value{}
+
+	for _, inputType := range inputTypes {
+		arg, err := c.resolve(inputType)
+		if err != nil {
+			return resolvedValue, err
+		}
+
+		inputArgs = append(inputArgs, arg)
+	}
+
+	return resolver.Execute(dependencyResolver, inputArgs)
 }
