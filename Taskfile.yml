@@ -12,3 +12,7 @@ tasks:
   lint:
     desc: "Check for possible errors on code"
     cmd: go vet -v ./... {{.CLI_ARGS}}
+
+  changelog:update:
+    desc: "Update changelog using git cliff"
+    cmd: git cliff -o CHANGELOG.md
