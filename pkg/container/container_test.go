@@ -84,3 +84,18 @@ func TestFill(t *testing.T) {
 	err = cont.Fill(&deps)
 	require.NoError(t, err, "struct should be filled correctly")
 }
+
+func TestResolveToken(t *testing.T) {
+	cont := container.New()
+
+	dependantResolver := func() *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	}
+
+	err := cont.AddTokenDependency("buffer", dependantResolver)
+	require.NoError(t, err)
+
+	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
+	require.NoError(t, err)
+	require.NotNil(t, buf)
+}
