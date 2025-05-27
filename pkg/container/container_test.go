@@ -43,6 +43,17 @@ func TestDetectCircularDependencies(t *testing.T) {
 	require.NoError(t, err, "circular dependencies should not be detected")
 }
 
+func TestDetectCircularDependencies_SelfReference(t *testing.T) {
+	cont := container.New()
+
+	cont.AddDependency(func(s MyService) MyService {
+		return MyService{}
+	})
+
+	_, err := cont.DetectCircularDependencies()
+	require.Error(t, err, "should detect self reference")
+}
+
 func TestResolve(t *testing.T) {
 	cont := container.New()
 
@@ -94,6 +105,23 @@ func TestResolveToken(t *testing.T) {
 
 	err := cont.AddTokenDependency("buffer", dependantResolver)
 	require.NoError(t, err)
+
+	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
+	require.NoError(t, err)
+	require.NotNil(t, buf)
+}
+
+func TestResolveToken_WithDependencies(t *testing.T) {
+	cont := container.New()
+
+	dependantResolver := func(service MyService) *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	}
+
+	err := cont.AddTokenDependency("buffer", dependantResolver)
+	require.NoError(t, err)
+
+	cont.AddDependency(NewService)
 
 	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
 	require.NoError(t, err)

@@ -131,6 +131,13 @@ func (c *Container) setConnections() error {
 		resType := reflect.TypeOf(node.Val.Resolver)
 		for i := 0; i < resType.NumIn(); i++ {
 			dependencyType := resType.In(i)
+
+			if node.Val.Type() == dependencyType {
+				return fmt.Errorf("circular depndency found: %v", []*graph.Node[resolver.DependencyResolver[any]]{
+					node,
+				})
+			}
+
 			dependencyNode, err := c.getNodeFor(dependencyType)
 			if err != nil {
 				return err
