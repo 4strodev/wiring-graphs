@@ -192,7 +192,7 @@ func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err err
 func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err error) {
 	node, ok := c.tokenIndex[token]
 	if !ok {
-		err = fmt.Errorf("dependency not found for token %s", token)
+		err = fmt.Errorf("dependency not found for token '%s'", token)
 		return
 	}
 

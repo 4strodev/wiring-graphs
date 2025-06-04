@@ -9,31 +9,18 @@ import (
 	"testing"
 
 	"github.com/4strodev/wiring/pkg/container"
+	"github.com/4strodev/wiring/pkg/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
 
-type MyService struct {
-}
-
-func (s MyService) SayHi() string {
-	return "hi!"
-}
-
-func NewService() MyService {
-	return MyService{}
-}
-
-type MyDeps struct {
-	Service MyService
-}
 
 func TestDetectCircularDependencies(t *testing.T) {
 	cont := container.New()
 
 	err := cont.AddDependencies(func(s io.Writer) (*slog.Logger, error) {
 		return slog.New(slog.NewJSONHandler(s, nil)), errors.New("an artificial error")
-	}, func(logger *slog.Logger) MyService {
-		return MyService{}
+	}, func(logger *slog.Logger) testutils.MyService {
+		return testutils.MyService{}
 	}, func() io.Writer {
 		return os.Stdout
 	})
@@ -46,8 +33,8 @@ func TestDetectCircularDependencies(t *testing.T) {
 func TestDetectCircularDependencies_SelfReference(t *testing.T) {
 	cont := container.New()
 
-	cont.AddDependency(func(s MyService) MyService {
-		return MyService{}
+	cont.AddDependency(func(s testutils.MyService) testutils.MyService {
+		return testutils.MyService{}
 	})
 
 	_, err := cont.DetectCircularDependencies()
@@ -57,43 +44,28 @@ func TestDetectCircularDependencies_SelfReference(t *testing.T) {
 func TestResolve(t *testing.T) {
 	cont := container.New()
 
-	cont.AddDependency(NewService)
+	cont.AddDependency(testutils.NewService)
 
-	_, err := container.Resolve[MyService](cont)
-	require.NoError(t, err, "MyService should be resolved")
+	_, err := container.Resolve[testutils.MyService](cont)
+	require.NoError(t, err, "testutils.MyService should be resolved")
 }
 
 func TestResolve_WithDependencies(t *testing.T) {
 	cont := container.New()
 
-	dependantResolver := func(s MyService) *bytes.Buffer {
+	dependantResolver := func(s testutils.MyService) *bytes.Buffer {
 		return bytes.NewBuffer([]byte{})
 	}
 
-	err := cont.AddDependencies(dependantResolver, NewService)
+	err := cont.AddDependencies(dependantResolver, testutils.NewService)
 	require.NoError(t, err)
 
-	_, err = container.Resolve[MyService](cont)
-	require.NoError(t, err, "MyService should be resolved")
+	_, err = container.Resolve[testutils.MyService](cont)
+	require.NoError(t, err, "testutils.MyService should be resolved")
 
 	buf, err := container.Resolve[*bytes.Buffer](cont)
 	require.NoError(t, err)
 	require.NotNil(t, buf)
-}
-
-func TestFill(t *testing.T) {
-	cont := container.New()
-
-	dependantResolver := func(s MyService) *bytes.Buffer {
-		return bytes.NewBuffer([]byte{})
-	}
-
-	err := cont.AddDependencies(dependantResolver, NewService)
-	require.NoError(t, err)
-
-	var deps MyDeps
-	err = cont.Fill(&deps)
-	require.NoError(t, err, "struct should be filled correctly")
 }
 
 func TestResolveToken(t *testing.T) {
@@ -114,14 +86,14 @@ func TestResolveToken(t *testing.T) {
 func TestResolveToken_WithDependencies(t *testing.T) {
 	cont := container.New()
 
-	dependantResolver := func(service MyService) *bytes.Buffer {
+	dependantResolver := func(service testutils.MyService) *bytes.Buffer {
 		return bytes.NewBuffer([]byte{})
 	}
 
 	err := cont.AddTokenDependency("buffer", dependantResolver)
 	require.NoError(t, err)
 
-	cont.AddDependency(NewService)
+	cont.AddDependency(testutils.NewService)
 
 	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
 	require.NoError(t, err)

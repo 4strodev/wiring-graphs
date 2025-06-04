@@ -9,6 +9,10 @@ tasks:
     desc: "Execute tests"
     cmd: go test -v ./... -timeout 1m {{.CLI_ARGS}}
 
+  test:nocache:
+    desc: "Execute tests without cached results"
+    cmd: go test -v ./... -timeout 1m -count 1 {{.CLI_ARGS}}
+
   lint:
     desc: "Check for possible errors on code"
     cmd: go vet -v ./... {{.CLI_ARGS}}
