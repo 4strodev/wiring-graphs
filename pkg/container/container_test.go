@@ -99,3 +99,25 @@ func TestResolveToken_WithDependencies(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, buf)
 }
+
+func TestContainerDependency(t *testing.T) {
+	cont := container.New()
+
+	cont.AddDependency(testutils.NewService)
+	cont.AddTokenDependency("buffer", func() *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	})
+
+	cont.AddDependency(func(c *container.Container) testutils.MyDeps {
+		deps := testutils.MyDeps{}
+		err := c.Fill(&deps)
+		require.NoError(t, err)
+
+		return deps
+	})
+
+	deps, err := container.Resolve[testutils.MyDeps](cont)
+	require.NoError(t, err)
+	err = deps.CheckResolvedDependencies()
+	require.NoError(t, err)
+}

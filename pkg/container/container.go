@@ -16,12 +16,21 @@ type Container struct {
 	connected  bool
 }
 
+// Retuns a new container and sets a default dependency that allows
+// to inject this container as a parameter on the resolvers
 func New() *Container {
-	return &Container{
+	container := &Container{
 		Graph:      graph.NewGraph[resolver.DependencyResolver[any]](),
 		typeIndex:  make(map[reflect.Type]*graph.Node[resolver.DependencyResolver[any]]),
 		tokenIndex: make(map[string]*graph.Node[resolver.DependencyResolver[any]]),
 	}
+
+	// Allow resolvers to inject container
+	container.AddDependency(func() *Container {
+		return container
+	})
+
+	return container
 }
 
 func (c *Container) AddDependency(res any) error {
