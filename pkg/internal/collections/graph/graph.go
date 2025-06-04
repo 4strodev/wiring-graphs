@@ -3,7 +3,7 @@ package graph
 import (
 	"fmt"
 
-	"github.com/4strodev/wiring/pkg/collections/set"
+	"github.com/4strodev/wiring/pkg/internal/collections/set"
 )
 
 type Graph[T any] struct {

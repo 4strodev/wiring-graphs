@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/4strodev/wiring/pkg/collections/graph"
+	"github.com/4strodev/wiring/pkg/internal/collections/graph"
 	"github.com/4strodev/wiring/pkg/resolver"
 )
 
