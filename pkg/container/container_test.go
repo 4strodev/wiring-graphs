@@ -13,11 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestDetectCircularDependencies(t *testing.T) {
 	cont := container.New()
 
-	err := cont.AddDependencies(func(s io.Writer) (*slog.Logger, error) {
+	err := cont.Dependencies(func(s io.Writer) (*slog.Logger, error) {
 		return slog.New(slog.NewJSONHandler(s, nil)), errors.New("an artificial error")
 	}, func(logger *slog.Logger) testutils.MyService {
 		return testutils.MyService{}
@@ -33,7 +32,7 @@ func TestDetectCircularDependencies(t *testing.T) {
 func TestDetectCircularDependencies_SelfReference(t *testing.T) {
 	cont := container.New()
 
-	cont.AddDependency(func(s testutils.MyService) testutils.MyService {
+	cont.Dependencies(func(s testutils.MyService) testutils.MyService {
 		return testutils.MyService{}
 	})
 
@@ -44,7 +43,7 @@ func TestDetectCircularDependencies_SelfReference(t *testing.T) {
 func TestResolve(t *testing.T) {
 	cont := container.New()
 
-	cont.AddDependency(testutils.NewService)
+	cont.Dependencies(testutils.NewService)
 
 	_, err := container.Resolve[testutils.MyService](cont)
 	require.NoError(t, err, "testutils.MyService should be resolved")
@@ -57,7 +56,7 @@ func TestResolve_WithDependencies(t *testing.T) {
 		return bytes.NewBuffer([]byte{})
 	}
 
-	err := cont.AddDependencies(dependantResolver, testutils.NewService)
+	err := cont.Dependencies(dependantResolver, testutils.NewService)
 	require.NoError(t, err)
 
 	_, err = container.Resolve[testutils.MyService](cont)
@@ -75,7 +74,7 @@ func TestResolveToken(t *testing.T) {
 		return bytes.NewBuffer([]byte{})
 	}
 
-	err := cont.AddTokenDependency("buffer", dependantResolver)
+	err := cont.Token(map[string]any{"buffer": dependantResolver})
 	require.NoError(t, err)
 
 	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
@@ -90,10 +89,10 @@ func TestResolveToken_WithDependencies(t *testing.T) {
 		return bytes.NewBuffer([]byte{})
 	}
 
-	err := cont.AddTokenDependency("buffer", dependantResolver)
+	err := cont.Token(map[string]any{"buffer": dependantResolver})
 	require.NoError(t, err)
 
-	cont.AddDependency(testutils.NewService)
+	cont.Dependencies(testutils.NewService)
 
 	buf, err := container.ResolveToken[*bytes.Buffer](cont, "buffer")
 	require.NoError(t, err)
@@ -103,12 +102,14 @@ func TestResolveToken_WithDependencies(t *testing.T) {
 func TestContainerDependency(t *testing.T) {
 	cont := container.New()
 
-	cont.AddDependency(testutils.NewService)
-	cont.AddTokenDependency("buffer", func() *bytes.Buffer {
-		return bytes.NewBuffer([]byte{})
-	})
+	cont.Dependencies(testutils.NewService)
+	cont.Token(map[string]any{
+		"buffer": func() *bytes.Buffer {
+			return bytes.NewBuffer([]byte{})
+		}},
+	)
 
-	cont.AddDependency(func(c *container.Container) testutils.MyDeps {
+	cont.Dependencies(func(c *container.Container) testutils.MyDeps {
 		deps := testutils.MyDeps{}
 		err := c.Fill(&deps)
 		require.NoError(t, err)
@@ -120,4 +121,19 @@ func TestContainerDependency(t *testing.T) {
 	require.NoError(t, err)
 	err = deps.CheckResolvedDependencies()
 	require.NoError(t, err)
+}
+
+func TestSingleton(t *testing.T) {
+	cont := container.New()
+
+	cont.Dependencies(func() *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	})
+
+	buffer1, err := container.Resolve[*bytes.Buffer](cont)
+	require.NoError(t, err)
+	buffer2, err := container.Resolve[*bytes.Buffer](cont)
+	require.NoError(t, err)
+
+	require.Equal(t, buffer1, buffer2)
 }

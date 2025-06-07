@@ -9,10 +9,17 @@ import (
 	"github.com/4strodev/wiring/pkg/resolver"
 )
 
+type resolverConfig struct {
+	singleton  bool
+	resolved   bool
+	node       *graph.Node[resolver.DependencyResolver[any]]
+	savedValue reflect.Value
+}
+
 type Container struct {
 	graph.Graph[resolver.DependencyResolver[any]]
-	typeIndex  map[reflect.Type]*graph.Node[resolver.DependencyResolver[any]]
-	tokenIndex map[string]*graph.Node[resolver.DependencyResolver[any]]
+	typeIndex  map[reflect.Type]*resolverConfig
+	tokenIndex map[string]*resolverConfig
 	connected  bool
 }
 
@@ -21,86 +28,117 @@ type Container struct {
 func New() *Container {
 	container := &Container{
 		Graph:      graph.NewGraph[resolver.DependencyResolver[any]](),
-		typeIndex:  make(map[reflect.Type]*graph.Node[resolver.DependencyResolver[any]]),
-		tokenIndex: make(map[string]*graph.Node[resolver.DependencyResolver[any]]),
+		typeIndex:  make(map[reflect.Type]*resolverConfig),
+		tokenIndex: make(map[string]*resolverConfig),
 	}
 
 	// Allow resolvers to inject container
-	container.AddDependency(func() *Container {
+	container.Dependencies(func() *Container {
 		return container
 	})
 
 	return container
 }
 
-func (c *Container) AddDependency(res any) error {
-	c.connected = false
-	if !resolver.IsValid(res) {
-		return errors.New("invalid resolver")
-	}
-
-	builder := resolver.DependencyResolver[any]{
-		Resolver: res,
-	}
-
-	resType := builder.Type()
-	_, exists := c.typeIndex[resType]
-	if exists {
-		return fmt.Errorf("dependency for this type already exists: %v", resType)
-	}
-
-	node := graph.NewNode(builder)
-	c.Add(node)
-	c.typeIndex[resType] = node
-
-	return nil
-}
-
-func (c *Container) AddTokenDependency(token string, res any) error {
-	c.connected = false
-	if !resolver.IsValid(res) {
-		return errors.New("invalid resolver")
-	}
-
-	builder := resolver.DependencyResolver[any]{
-		Resolver: res,
-	}
-
-	_, exists := c.tokenIndex[token]
-	if exists {
-		return fmt.Errorf("dependency for token type already exists: %s", token)
-	}
-
-	node := graph.NewNode(builder)
-	c.Add(node)
-	c.tokenIndex[token] = node
-
-	return nil
-}
-
-func (c *Container) AddDependencies(resolvers ...any) error {
+func (c *Container) Dependencies(resolvers ...any) error {
 	c.connected = false
 	for _, res := range resolvers {
-		if !resolver.IsValid(res) {
-			return errors.New("invalid resolver")
+		config, err := buildConfig(res)
+		if err != nil {
+			return err
 		}
 
-		builder := resolver.DependencyResolver[any]{
-			Resolver: res,
-		}
-
-		resType := builder.Type()
+		resType := config.node.Val.Type()
 		_, exists := c.typeIndex[resType]
 		if exists {
 			return fmt.Errorf("dependency for this type already exists: %v", resType)
 		}
 
-		node := graph.NewNode(builder)
-		c.Add(node)
-		c.typeIndex[resType] = node
+		c.Add(config.node)
+		c.typeIndex[resType] = config
 	}
 
 	return nil
+}
+
+func (c *Container) Singleton(resolvers ...any) error {
+	c.connected = false
+	for _, res := range resolvers {
+		config, err := buildConfig(res)
+		if err != nil {
+			return err
+		}
+
+		resType := config.node.Val.Type()
+		_, exists := c.typeIndex[resType]
+		if exists {
+			return fmt.Errorf("dependency for this type already exists: %v", resType)
+		}
+
+		c.Add(config.node)
+		config.singleton = true
+		c.typeIndex[resType] = config
+	}
+
+	return nil
+}
+
+func (c *Container) TokenSingleton(dependencies map[string]any) error {
+	c.connected = false
+	for token, res := range dependencies {
+		config, err := buildConfig(res)
+		if err != nil {
+			return err
+		}
+
+		_, exists := c.tokenIndex[token]
+		if exists {
+			return fmt.Errorf("dependency for token type already exists: %s", token)
+		}
+
+		c.Add(config.node)
+		config.singleton = true
+		c.tokenIndex[token] = config
+	}
+
+	return nil
+}
+
+func (c *Container) Token(dependencies map[string]any) error {
+	c.connected = false
+	for token, res := range dependencies {
+		config, err := buildConfig(res)
+		if err != nil {
+			return err
+		}
+
+		_, exists := c.tokenIndex[token]
+		if exists {
+			return fmt.Errorf("dependency for token already exists: %s", token)
+		}
+
+		c.Add(config.node)
+		c.tokenIndex[token] = config
+	}
+
+	return nil
+}
+
+func buildConfig(res any) (*resolverConfig, error) {
+	if !resolver.IsValid(res) {
+		return nil, errors.New("invalid resolver")
+	}
+
+	builder := resolver.DependencyResolver[any]{
+		Resolver: res,
+	}
+
+	node := graph.NewNode(builder)
+	config := resolverConfig{
+		node: node,
+	}
+
+	return &config, nil
 }
 
 func (c *Container) ensureNodesConnected() error {
@@ -130,7 +168,7 @@ func (c Container) getNodeFor(t reflect.Type) (*graph.Node[resolver.DependencyRe
 		return nil, fmt.Errorf("dependency for %v not found", t)
 	}
 
-	return node, nil
+	return node.node, nil
 }
 
 // setConnections stablishes connections between nodes and
@@ -182,7 +220,12 @@ func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err err
 		return
 	}
 
-	dependencyResolver := node.Val
+	if node.singleton && node.resolved {
+		resolvedValue = node.savedValue
+		return
+	}
+
+	dependencyResolver := node.node.Val
 	inputTypes := dependencyResolver.Input()
 	inputArgs := []reflect.Value{}
 
@@ -195,7 +238,17 @@ func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err err
 		inputArgs = append(inputArgs, arg)
 	}
 
-	return resolver.Execute(dependencyResolver, inputArgs)
+	resolvedValue, err = resolver.Execute(dependencyResolver, inputArgs)
+	if err != nil {
+		return
+	}
+	node.resolved = true
+
+	if node.singleton {
+		node.savedValue = resolvedValue
+	}
+
+	return
 }
 
 func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err error) {
@@ -205,7 +258,12 @@ func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err 
 		return
 	}
 
-	dependencyResolver := node.Val
+	if node.singleton && node.resolved {
+		resolvedValue = node.savedValue
+		return
+	}
+
+	dependencyResolver := node.node.Val
 	inputTypes := dependencyResolver.Input()
 	inputArgs := []reflect.Value{}
 
@@ -218,5 +276,15 @@ func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err 
 		inputArgs = append(inputArgs, arg)
 	}
 
-	return resolver.Execute(dependencyResolver, inputArgs)
+	resolvedValue, err = resolver.Execute(dependencyResolver, inputArgs)
+	if err != nil {
+		return
+	}
+	node.resolved = true
+
+	if node.singleton {
+		node.savedValue = resolvedValue
+	}
+
+	return
 }

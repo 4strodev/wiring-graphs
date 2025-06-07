@@ -16,10 +16,12 @@ func TestFill(t *testing.T) {
 		return bytes.NewBuffer([]byte{})
 	}
 
-	err := cont.AddDependencies(dependantResolver, testutils.NewService)
-	cont.AddTokenDependency("buffer", func() *bytes.Buffer {
-		return bytes.NewBuffer([]byte{})
-	})
+	err := cont.Dependencies(dependantResolver, testutils.NewService)
+	cont.Token(map[string]any{
+		"buffer": func() *bytes.Buffer {
+			return bytes.NewBuffer([]byte{})
+		}},
+	)
 	require.NoError(t, err)
 
 	var deps testutils.MyDeps
