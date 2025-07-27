@@ -1,8 +1,6 @@
 package graph
 
 import (
-	"fmt"
-
 	"github.com/4strodev/wiring/pkg/internal/collections/set"
 )
 
@@ -35,7 +33,6 @@ func (g Graph[T]) GetRootNodes() []*Node[T] {
 	var rootNodes = []*Node[T]{}
 	for node := range g.nodes {
 		if !node.HasIncomingNodes() {
-			fmt.Println(node.Val)
 			rootNodes = append(rootNodes, node)
 		}
 	}
