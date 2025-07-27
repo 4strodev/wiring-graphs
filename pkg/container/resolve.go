@@ -1,8 +1,9 @@
 package container
 
 import (
-	"fmt"
 	"reflect"
+
+	"github.com/4strodev/wiring/pkg/errors"
 )
 
 func Resolve[T any](c *Container) (T, error) {
@@ -20,7 +21,7 @@ func Resolve[T any](c *Container) (T, error) {
 	var ok bool
 	dependency, ok = resolvedValue.Interface().(T)
 	if !ok {
-		err = fmt.Errorf("cannot convert returned value into %s", reflect.TypeFor[T]().String())
+		err = errors.Errorf(errors.E_TYPE_ERROR, "cannot convert returned value into %s", reflect.TypeFor[T]().String())
 	}
 
 	return dependency, err
@@ -41,7 +42,7 @@ func ResolveToken[T any](c *Container, token string) (T, error) {
 	var ok bool
 	dependency, ok = resolvedValue.Interface().(T)
 	if !ok {
-		err = fmt.Errorf("cannot convert returned value into %s", reflect.TypeFor[T]().String())
+		err = errors.Errorf(errors.E_TYPE_ERROR, "cannot convert returned value into %s", reflect.TypeFor[T]().String())
 	}
 
 	return dependency, err

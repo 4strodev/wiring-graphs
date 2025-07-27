@@ -1,10 +1,9 @@
 package container
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
 
+	"github.com/4strodev/wiring/pkg/errors"
 	"github.com/4strodev/wiring/pkg/internal/collections/graph"
 	"github.com/4strodev/wiring/pkg/resolver"
 )
@@ -51,7 +50,7 @@ func (c *Container) Dependencies(resolvers ...any) error {
 		resType := config.node.Val.Type()
 		_, exists := c.typeIndex[resType]
 		if exists {
-			return fmt.Errorf("dependency for this type already exists: %v", resType)
+			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for this type already exists: %v", resType)
 		}
 
 		c.Add(config.node)
@@ -72,7 +71,7 @@ func (c *Container) Singleton(resolvers ...any) error {
 		resType := config.node.Val.Type()
 		_, exists := c.typeIndex[resType]
 		if exists {
-			return fmt.Errorf("dependency for this type already exists: %v", resType)
+			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for this type already exists: %v", resType)
 		}
 
 		c.Add(config.node)
@@ -93,7 +92,7 @@ func (c *Container) TokenSingleton(dependencies map[string]any) error {
 
 		_, exists := c.tokenIndex[token]
 		if exists {
-			return fmt.Errorf("dependency for token type already exists: %s", token)
+			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for token type already exists: %s", token)
 		}
 
 		c.Add(config.node)
@@ -114,7 +113,7 @@ func (c *Container) Token(dependencies map[string]any) error {
 
 		_, exists := c.tokenIndex[token]
 		if exists {
-			return fmt.Errorf("dependency for token already exists: %s", token)
+			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for token already exists: %s", token)
 		}
 
 		c.Add(config.node)
@@ -126,7 +125,7 @@ func (c *Container) Token(dependencies map[string]any) error {
 
 func buildConfig(res any) (*resolverConfig, error) {
 	if !resolver.IsValid(res) {
-		return nil, errors.New("invalid resolver")
+		return nil, errors.Errorf(errors.E_INVALID_RESOLVER, "Invalid resolver")
 	}
 
 	builder := resolver.DependencyResolver[any]{
@@ -165,7 +164,7 @@ func (c *Container) DetectCircularDependencies() ([]*graph.Node[resolver.Depende
 func (c Container) getNodeFor(t reflect.Type) (*graph.Node[resolver.DependencyResolver[any]], error) {
 	node, ok := c.typeIndex[t]
 	if !ok {
-		return nil, fmt.Errorf("dependency for %v not found", t)
+		return nil, errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency for %v not fonud", t)
 	}
 
 	return node.node, nil
@@ -180,9 +179,12 @@ func (c *Container) setConnections() error {
 			dependencyType := resType.In(i)
 
 			if node.Val.Type() == dependencyType {
-				return fmt.Errorf("circular depndency found: %v", []*graph.Node[resolver.DependencyResolver[any]]{
-					node,
-				})
+				return errors.Errorf(
+					errors.E_CIRCULAR_DEPENDENCY,
+					"circular dependency found: %v",
+					[]*graph.Node[resolver.DependencyResolver[any]]{
+						node,
+					})
 			}
 
 			dependencyNode, err := c.getNodeFor(dependencyType)
@@ -191,7 +193,9 @@ func (c *Container) setConnections() error {
 			}
 
 			if dependencyNode.IsConnectedWith(node) {
-				return fmt.Errorf("circular dependency found: %v",
+				return errors.Errorf(
+					errors.E_CIRCULAR_DEPENDENCY,
+					"circular dependency found: %v",
 					[]*graph.Node[resolver.DependencyResolver[any]]{
 						node,
 						dependencyNode,
@@ -206,7 +210,7 @@ func (c *Container) setConnections() error {
 
 	cicle, hasCicle := c.DetectCircularRelations()
 	if hasCicle {
-		return fmt.Errorf("circular dependency found: %v", cicle)
+		return errors.Errorf(errors.E_CIRCULAR_DEPENDENCY, "circular dependency found: %v", cicle)
 	}
 
 	c.connected = true
@@ -216,7 +220,7 @@ func (c *Container) setConnections() error {
 func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err error) {
 	node, ok := c.typeIndex[t]
 	if !ok {
-		err = fmt.Errorf("dependency not found for type %v", t)
+		err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for type %v", t)
 		return
 	}
 
@@ -254,7 +258,7 @@ func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err err
 func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err error) {
 	node, ok := c.tokenIndex[token]
 	if !ok {
-		err = fmt.Errorf("dependency not found for token '%s'", token)
+		err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for token '%s'", token)
 		return
 	}
 

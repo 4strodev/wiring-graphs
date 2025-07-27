@@ -1,9 +1,10 @@
 package container
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/4strodev/wiring/pkg/errors"
 )
 
 // This file contains all the logic related to automatically fill structs
@@ -11,11 +12,11 @@ import (
 func (c Container) Fill(structPointer any) (err error) {
 	refStructValue := reflect.ValueOf(structPointer)
 	if refStructValue.Kind() != reflect.Pointer {
-		return fmt.Errorf("fill expects a struct pointer '%v' was given", refStructValue.Kind())
+		return errors.Errorf(errors.E_TYPE_ERROR, "fill expects a struct pointer '%v' was given", refStructValue.Kind())
 	}
 
 	if refStructValue.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("fill expects a struct pointer '%v' pointer was given", refStructValue.Elem().Kind())
+		return errors.Errorf(errors.E_TYPE_ERROR, "fill expects a struct pointer '%v' pointer was given", refStructValue.Elem().Kind())
 	}
 
 	refStructType := refStructValue.Elem().Type()
@@ -40,7 +41,7 @@ func (c Container) Fill(structPointer any) (err error) {
 			instance, err = c.resolve(fieldValue.Type())
 		}
 		if err != nil {
-			return fmt.Errorf("cannot fill struct: %w", err)
+			return err
 		}
 
 		fieldValue.Set(instance)

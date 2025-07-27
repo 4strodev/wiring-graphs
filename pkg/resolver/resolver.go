@@ -1,8 +1,9 @@
 package resolver
 
 import (
-	"fmt"
 	"reflect"
+
+	"github.com/4strodev/wiring/pkg/errors"
 )
 
 type SimpleFunctionResolver[T any] = func() T
@@ -44,7 +45,8 @@ func Execute(d DependencyResolver[any], in []reflect.Value) (reflect.Value, erro
 		out := reflectValue.Call(in)
 
 		if len(out) != 2 {
-			return reflect.Value{}, fmt.Errorf("resolver for type %s does not return two values", d.Type().String())
+			err = errors.Errorf(errors.E_INVALID_RESOLVER, "resolver for type %s does not return two values", d.Type().String())
+			return reflect.Value{}, err
 		}
 
 		value = out[0]
@@ -53,7 +55,7 @@ func Execute(d DependencyResolver[any], in []reflect.Value) (reflect.Value, erro
 		}
 		returnedError, ok := out[1].Interface().(error)
 		if !ok {
-			err = fmt.Errorf("resolver should return an error not %s", out[1].Type().String())
+			err = errors.Errorf(errors.E_INVALID_RESOLVER, "resolver should return anerror not %s", out[1].Type().String())
 		}
 
 		err = returnedError
