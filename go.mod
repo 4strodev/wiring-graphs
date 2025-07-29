@@ -1,4 +1,4 @@
-module github.com/4strodev/wiring
+module github.com/4strodev/wiring_graphs
 
 go 1.24.2
 
