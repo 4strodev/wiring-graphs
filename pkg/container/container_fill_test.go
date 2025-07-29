@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/4strodev/wiring/pkg/internal/testutils"
+	"github.com/4strodev/wiring_graphs/pkg/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

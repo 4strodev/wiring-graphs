@@ -3,9 +3,9 @@ package container
 import (
 	"reflect"
 
-	"github.com/4strodev/wiring/pkg/errors"
-	"github.com/4strodev/wiring/pkg/internal/collections/graph"
-	"github.com/4strodev/wiring/pkg/resolver"
+	"github.com/4strodev/wiring_graphs/pkg/errors"
+	"github.com/4strodev/wiring_graphs/pkg/internal/collections/graph"
+	"github.com/4strodev/wiring_graphs/pkg/resolver"
 )
 
 type resolverConfig struct {

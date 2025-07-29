@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/4strodev/wiring/pkg/container"
-	"github.com/4strodev/wiring/pkg/internal/testutils"
+	"github.com/4strodev/wiring_graphs/pkg/container"
+	"github.com/4strodev/wiring_graphs/pkg/internal/testutils"
 	"github.com/stretchr/testify/require"
 )
 

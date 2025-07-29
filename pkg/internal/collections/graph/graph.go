@@ -1,7 +1,7 @@
 package graph
 
 import (
-	"github.com/4strodev/wiring/pkg/internal/collections/set"
+	"github.com/4strodev/wiring_graphs/pkg/internal/collections/set"
 )
 
 type Graph[T any] struct {

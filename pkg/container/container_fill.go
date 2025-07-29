@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/4strodev/wiring/pkg/errors"
+	"github.com/4strodev/wiring_graphs/pkg/errors"
 )
 
 // This file contains all the logic related to automatically fill structs

@@ -3,7 +3,7 @@ package resolver
 import (
 	"reflect"
 
-	"github.com/4strodev/wiring/pkg/errors"
+	"github.com/4strodev/wiring_graphs/pkg/errors"
 )
 
 type SimpleFunctionResolver[T any] = func() T

@@ -3,7 +3,7 @@ package container
 import (
 	"reflect"
 
-	"github.com/4strodev/wiring/pkg/errors"
+	"github.com/4strodev/wiring_graphs/pkg/errors"
 )
 
 func Resolve[T any](c *Container) (T, error) {
