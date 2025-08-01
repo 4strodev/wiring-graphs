@@ -14,7 +14,7 @@ func (c *MustContainer) TokenSingleton(dependencies map[string]any) *MustContain
 }
 
 func (c *MustContainer) Singleton(resolvers ...any) *MustContainer {
-	err := c.container.Singleton(resolvers)
+	err := c.container.Singleton(resolvers...)
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +32,7 @@ func (c *MustContainer) Token(dependencies map[string]any) *MustContainer {
 }
 
 func (c *MustContainer) Dependencies(resolvers ...any) *MustContainer  {
-	err := c.container.Dependencies(resolvers)
+	err := c.container.Dependencies(resolvers...)
 	if err != nil {
 		panic(err)
 	}
