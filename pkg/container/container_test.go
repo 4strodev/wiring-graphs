@@ -137,3 +137,16 @@ func TestSingleton(t *testing.T) {
 
 	require.Equal(t, buffer1, buffer2)
 }
+
+func TestDerived(t *testing.T) {
+	cont := container.New()
+
+	cont.Transient(func() *bytes.Buffer {
+		return bytes.NewBuffer([]byte{})
+	})
+
+	derived := cont.Derived()
+	buffer, err := container.Resolve[*bytes.Buffer](derived)
+	require.NoError(t, err)
+	require.NotNil(t, buffer)
+}
