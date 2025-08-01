@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0-beta] - 2025-08-01
+
+### 🚀 Features
+
+- Add must contianer
+- Return must container
+
+### 🐛 Bug Fixes
+
+- Destructure resolvers
+
+## [1.0.0-alpha3] - 2025-07-29
+
+### 🚜 Refactor
+
+- Update module name
+
+## [1.0.0-alpha2] - 2025-07-29
+
+### ⚙️ Miscellaneous Tasks
+
+- Add license
+- Update go mod path
+
+## [1.0.0-alpha1] - 2025-07-27
+
+### 🚀 Features
+
+- Resolve by token
+- Fill token
+- Allow to inject container itself
+- Add singleton support
+
+### 🐛 Bug Fixes
+
+- Detect self reference circual dependency
+
+### 🚜 Refactor
+
+- *(collections)* Move to internal usage only
+- Use custom errors
+- Remove print
+
+### ⚙️ Miscellaneous Tasks
+
+- Add changelog task
+
 ## [1.0.0-alpha] - 2025-05-21
 
 ### 🚀 Features
