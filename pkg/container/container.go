@@ -39,6 +39,12 @@ func New() *Container {
 	return container
 }
 
+func (c *Container) Must() *MustContainer {
+	return &MustContainer{
+		c,
+	}
+}
+
 func (c *Container) Dependencies(resolvers ...any) error {
 	c.connected = false
 	for _, res := range resolvers {
