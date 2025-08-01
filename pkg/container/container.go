@@ -16,7 +16,8 @@ type resolverConfig struct {
 }
 
 type Container struct {
-	graph.Graph[resolver.DependencyResolver[any]]
+	parent     *Container
+	graph      graph.Graph[resolver.DependencyResolver[any]]
 	typeIndex  map[reflect.Type]*resolverConfig
 	tokenIndex map[string]*resolverConfig
 	connected  bool
@@ -26,13 +27,13 @@ type Container struct {
 // to inject this container as a parameter on the resolvers
 func New() *Container {
 	container := &Container{
-		Graph:      graph.NewGraph[resolver.DependencyResolver[any]](),
+		graph:      graph.NewGraph[resolver.DependencyResolver[any]](),
 		typeIndex:  make(map[reflect.Type]*resolverConfig),
 		tokenIndex: make(map[string]*resolverConfig),
 	}
 
 	// Allow resolvers to inject container
-	container.Dependencies(func() *Container {
+	container.Transient(func() *Container {
 		return container
 	})
 
@@ -45,7 +46,7 @@ func (c *Container) Must() *MustContainer {
 	}
 }
 
-func (c *Container) Dependencies(resolvers ...any) error {
+func (c *Container) Transient(resolvers ...any) error {
 	c.connected = false
 	for _, res := range resolvers {
 		config, err := buildConfig(res)
@@ -59,7 +60,7 @@ func (c *Container) Dependencies(resolvers ...any) error {
 			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for this type already exists: %v", resType)
 		}
 
-		c.Add(config.node)
+		c.graph.Add(config.node)
 		c.typeIndex[resType] = config
 	}
 
@@ -80,7 +81,7 @@ func (c *Container) Singleton(resolvers ...any) error {
 			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for this type already exists: %v", resType)
 		}
 
-		c.Add(config.node)
+		c.graph.Add(config.node)
 		config.singleton = true
 		c.typeIndex[resType] = config
 	}
@@ -101,7 +102,7 @@ func (c *Container) TokenSingleton(dependencies map[string]any) error {
 			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for token type already exists: %s", token)
 		}
 
-		c.Add(config.node)
+		c.graph.Add(config.node)
 		config.singleton = true
 		c.tokenIndex[token] = config
 	}
@@ -122,7 +123,7 @@ func (c *Container) Token(dependencies map[string]any) error {
 			return errors.Errorf(errors.E_REDECLARED_DEPENDENCY, "dependency for token already exists: %s", token)
 		}
 
-		c.Add(config.node)
+		c.graph.Add(config.node)
 		c.tokenIndex[token] = config
 	}
 
@@ -159,7 +160,7 @@ func (c *Container) DetectCircularDependencies() ([]*graph.Node[resolver.Depende
 	if err != nil {
 		return nil, err
 	}
-	path, detected := c.Graph.DetectCircularRelations()
+	path, detected := c.graph.DetectCircularRelations()
 	if detected {
 		return path, nil
 	}
@@ -179,7 +180,7 @@ func (c Container) getNodeFor(t reflect.Type) (*graph.Node[resolver.DependencyRe
 // setConnections stablishes connections between nodes and
 // look for circular dependencies
 func (c *Container) setConnections() error {
-	for node := range c.Graph.GetNodes() {
+	for node := range c.graph.GetNodes() {
 		resType := reflect.TypeOf(node.Val.Resolver)
 		for i := 0; i < resType.NumIn(); i++ {
 			dependencyType := resType.In(i)
@@ -210,11 +211,11 @@ func (c *Container) setConnections() error {
 				)
 			}
 
-			c.Connect(dependencyNode, node, graph.OUT)
+			c.graph.Connect(dependencyNode, node, graph.OUT)
 		}
 	}
 
-	cicle, hasCicle := c.DetectCircularRelations()
+	cicle, hasCicle := c.graph.DetectCircularRelations()
 	if hasCicle {
 		return errors.Errorf(errors.E_CIRCULAR_DEPENDENCY, "circular dependency found: %v", cicle)
 	}
