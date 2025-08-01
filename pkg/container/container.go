@@ -40,6 +40,12 @@ func New() *Container {
 	return container
 }
 
+func (c *Container) Derived() *Container {
+	childContainer := New()
+	childContainer.parent = c
+	return childContainer
+}
+
 func (c *Container) Must() *MustContainer {
 	return &MustContainer{
 		c,
@@ -227,8 +233,11 @@ func (c *Container) setConnections() error {
 func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err error) {
 	node, ok := c.typeIndex[t]
 	if !ok {
-		err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for type %v", t)
-		return
+		if c.parent == nil {
+			err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for type %v", t)
+			return
+		}
+		return c.parent.resolve(t)
 	}
 
 	if node.singleton && node.resolved {
@@ -265,8 +274,11 @@ func (c Container) resolve(t reflect.Type) (resolvedValue reflect.Value, err err
 func (c Container) resolveToken(token string) (resolvedValue reflect.Value, err error) {
 	node, ok := c.tokenIndex[token]
 	if !ok {
-		err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for token '%s'", token)
-		return
+		if c.parent == nil {
+			err = errors.Errorf(errors.E_DEPENDENCY_NOT_FOUND, "dependency not found for token '%s'", token)
+			return
+		}
+		return c.parent.resolveToken(token)
 	}
 
 	if node.singleton && node.resolved {

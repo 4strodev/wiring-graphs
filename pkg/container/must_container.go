@@ -32,7 +32,7 @@ func (c *MustContainer) Token(dependencies map[string]any) *MustContainer {
 }
 
 func (c *MustContainer) Dependencies(resolvers ...any) *MustContainer  {
-	err := c.container.Dependencies(resolvers...)
+	err := c.container.Transient(resolvers...)
 	if err != nil {
 		panic(err)
 	}
