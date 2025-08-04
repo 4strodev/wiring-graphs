@@ -41,7 +41,17 @@ func (c Container) Fill(structPointer any) (err error) {
 			instance, err = c.resolve(fieldValue.Type())
 		}
 		if err != nil {
-			return err
+			// Wrap error
+			customError, ok := err.(*errors.WiringError)
+			if !ok {
+				return err
+			}
+			return errors.Errorf(
+				customError.Code(),
+				"cannot resolve dependency for field %s.%s: %w",
+				refStructType.Name(),
+				refStructType.Field(i).Name,
+				customError)
 		}
 
 		fieldValue.Set(instance)

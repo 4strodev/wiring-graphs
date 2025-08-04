@@ -32,3 +32,7 @@ func (e *WiringError) Error() string {
 func (e *WiringError) Unwrap() error {
 	return e.err
 }
+
+func (e WiringError) Code() wiringErrorCode {
+	return e.code
+}
